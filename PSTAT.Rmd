@@ -29,7 +29,7 @@ library(fastcluster)
 ```
 
 ```{r cars}
-donnes<-readRDS("C:/Users/33643/OneDrive/Bureau/Donnee/anticorps_normalisés.rds")
+donnes<-readRDS("/home/ensai/Bureau/donnee/ProjetStat2A/anticorps_normalisés.rds")
 
 ```
 
@@ -49,6 +49,7 @@ donnes<-readRDS("C:/Users/33643/OneDrive/Bureau/Donnee/anticorps_normalisés.rds
 Organisation des données
 ```{r cars}
 data<- as.data.frame(t(donnes))
+datac<- as.data.frame(t(donnes))
 correlations <- cor(data, method = "pearson")
 
 noms_variables <- colnames(data)
@@ -174,12 +175,10 @@ Densité des Marqueurs /Recherche VAR BIMODAL
 ```{r cars}
 # Parcourir chaque variable et tracer sa densité
 par(mfrow=c(1, 2))
-for(i in 1:ncol(data)) {
-  densite <- density(data[[i]])
+for(i in 1:ncol(datac)) {
+  densite <- density(datac[[i]])
   plot(densite, main=paste("Densité de", names(data)[i]), xlab="Valeurs", ylab="Densité")
 }
-
-
 
 #########CAH VAR BIMODAL##########
 
@@ -201,7 +200,7 @@ distances <- dist(VAR_Bimodal, method = "euclidean")
 any(is.na(distances))
 
 # Installer flashClust si nécessaire
-install.packages("fastcluster")
+#install.packages("fastcluster")
 
 # Charger flashClust
 library(fastcluster)
