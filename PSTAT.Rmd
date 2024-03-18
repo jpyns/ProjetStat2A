@@ -1,0 +1,215 @@
+---
+title: "PROJET STAT"
+author: "Toure"
+date: "2024-02-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+library(FactoMineR)
+library(factoextra)
+
+# Charger flashClust
+library(fastcluster)
+```
+
+```{r cars}
+donnes<-readRDS("C:/Users/33643/OneDrive/Bureau/Donnee/anticorps_normalisés.rds")
+
+```
+
+```{r cars}
+# Calcul des corrélations entre les lignes de la matrice
+#correlations_lignes <- cor(donnes, method = "pearson")
+# Affichage des corrélations
+#print(correlations_lignes)
+#ligne_a_visualiser <- donnes[2, ]
+#colonne_a_visualiser <- donnes[, 2]
+# Création du boxplot
+#boxplot(ligne_a_visualiser, main = "Boxplot pour la ligne 2", ylab = "Valeurs")
+#boxplot(colonne_a_visualiser, main = "Boxplot pour la colonne 2", ylab = "Valeurs")
+
+```
+
+Organisation des données
+```{r cars}
+data<- as.data.frame(t(donnes))
+correlations <- cor(data, method = "pearson")
+
+noms_variables <- colnames(data)
+print(noms_variables)
+id <- rownames(data)
+print(id)
+
+indices_top_10 <- tail(order(correlations, decreasing = TRUE), 10)
+
+# Afficher les noms de ligne, de colonne et les valeurs
+for (index in indices_top_10) {
+  coord <- arrayInd(index, dim(correlations), useNames = TRUE)
+  valeur <- correlations[coord]
+  cat("Nom de la ligne:", rownames(correlations)[coord[1]], ", Nom de la colonne:", colnames(correlations)[coord[2]], ", Valeur:", valeur, "\n")
+}
+```
+
+Stats desc
+```{r cars}
+#ajout variable
+data$identifiant <- rownames(data)
+data$donneur_receveur <- ifelse(substr(rownames(data), 1, 1) == "D", "D", "R")
+
+
+distribution <- prop.table(table(data$donneur_receveur)) * 100
+
+# Afficher la distribution en pourcentage
+print(distribution)
+
+#      D       R 
+#27.4283 72.5717
+boxplot(data$`CD4-RPA.T4` ~ donneur_receveur, data = data, col = c("lightblue", "lightgreen"), 
+        main = "Boxplot des valeurs de CD4 par catégorie",
+        xlab = "Catégorie (D: Donneur, R: Receveur)",
+        ylab = "Valeurs de CD4")
+
+boxplot(data$CD8 ~ donneur_receveur, data = data, col = c("lightblue", "lightgreen"), 
+        main = "Boxplot des valeurs de CD8 par catégorie",
+        xlab = "Catégorie (D: Donneur, R: Receveur)",
+        ylab = "Valeurs de CD8")
+
+```
+
+
+Séparation Donneur/Receveur
+```{r cars}
+#séparation donneur receveur
+df_receveur <- data[data$donneur_receveur == "R", ]
+df_donneur <- data[data$donneur_receveur == "D", ]
+
+df_receveur2 <- df_receveur[, !(colnames(df_receveur) %in% c("identifiant", "donneur_receveur"))]
+df_donneur2 <- df_donneur[, !(colnames(df_receveur) %in% c("identifiant", "donneur_receveur"))]
+# Effectuer l'ACP
+acp_receveur <- PCA(df_receveur2, graph = FALSE)
+acp_donneur <- PCA(df_donneur2, graph = FALSE)
+# Afficher les résultats
+summary(acp_receveur)
+```
+
+étude acp donneur receveur
+```{r cars}
+# Afficher les fortes contributions pour chaque composante principale
+contributionsR <- dimdesc(acp_receveur, axes = c(1, 2), proba = 0.05)
+contributionsD <- dimdesc(acp_donneur, axes = c(1, 2), proba = 0.05)
+# Afficher les résultats
+print(contributionsR)
+#                  correlation       p.value
+#CD178             0.72057890  0.000000e+00
+#CD34              0.69396442  0.000000e+00
+#CD152             0.66284766  0.000000e+00
+#CD90              0.64728868  0.000000e+00
+#CD79b             0.63301213  0.000000e+00
+#CD124             0.62639889  0.000000e+00
+#CD83              0.62444691  0.000000e+00
+#CD117             0.60439342  0.000000e+00
+#CD23              0.60115403  0.000000e+00
+#Iso.MOPC.21       0.58481895  0.000000e+00
+print(contributionsD)
+#                  correlation       p.value
+#CD3-UCHT1         0.84513261  0.000000e+00
+#CD5               0.84372200  0.000000e+00
+#CD2               0.82477940  0.000000e+00
+#CD7               0.81084955  0.000000e+00
+#CD28              0.77877567  0.000000e+00
+#HuMsRt.CD278      0.76805665  0.000000e+00
+#TCR.AB            0.74909339  0.000000e+00
+#CD352             0.73968766  0.000000e+00
+#CD52              0.68381128  0.000000e+00
+#CD27              0.60716380  0.000000e+00
+```
+
+Graphe
+```{r cars}
+graphe_contributionsD <- fviz_contrib(acp_donneur, choice = "var", axes = c(1, 2), top = 10)
+graphe_contributionsR <- fviz_contrib(acp_receveur, choice = "var", axes = c(1, 2), top = 10)
+# Afficher le graphe
+print(graphe_contributionsD)
+graphe_combine <- gridExtra::grid.arrange(graphe_contributionsD, graphe_contributionsR, ncol = 2)
+
+boxplot(data$CD2 ~ donneur_receveur, data = data, col = c("lightblue", "lightgreen"), 
+        main = "Boxplot des valeurs de CD2 par catégorie",
+        xlab = "Catégorie (D: Donneur, R: Receveur)",
+        ylab = "Valeurs de CD2")
+
+boxplot(data$CD11a ~ donneur_receveur, data = data, col = c("lightblue", "lightgreen"), 
+        main = "Boxplot des valeurs de CD11a par catégorie",
+        xlab = "Catégorie (D: Donneur, R: Receveur)",
+        ylab = "Valeurs de CD11a")
+```
+
+Donnees ISO/SANS ISO
+```{r cars}
+donnees_sans_iso <- data %>% select(-matches("^iso"))
+
+donnees_iso <- data %>% select(starts_with("iso"))
+
+
+summary((donnees_iso))
+```
+
+
+Densité des Marqueurs /Recherche VAR BIMODAL
+```{r cars}
+# Parcourir chaque variable et tracer sa densité
+par(mfrow=c(1, 2))
+for(i in 1:ncol(data)) {
+  densite <- density(data[[i]])
+  plot(densite, main=paste("Densité de", names(data)[i]), xlab="Valeurs", ylab="Densité")
+}
+
+
+
+#########CAH VAR BIMODAL##########
+
+
+#Bimodale VAR
+#CD101, CD11a, CD11b, CD11c, CD123,CD13, CD14-M5E2, CD161,CD18, CD19, CD2, CD20-2H7,CD21,CD24,CD244,CD28, CD31, CD328, CD33, CD35, CD352, CD36, CD39, CD3-UCHT1, CD45RA,CD45-HI30,CD48,CD4-RPA.T4, CD5,CD56,CD62L,CD64,CD7,CD71,CD8,CD81,CD86,CD94,CD95,CLEC12A,GPR56,IgM,KLRG1,TCR.AB,CD10, CD117,CD9
+#CD105-43A3, CD122, CD183, CD194, CD27
+VAR_Bimodal <- data[c("CD101", "CD11a", "CD11b", "CD11c", "CD123","CD13", "CD14-M5E2", "CD161","CD18", "CD19", "CD2", "CD20-2H7","CD21","CD24","CD244","CD28", "CD31", "CD328", "CD33", "CD35", "CD352", "CD36", "CD39", "CD3-UCHT1", "CD45RA","CD45-HI30","CD48","CD4-RPA.T4", "CD5","CD56","CD62L","CD64","CD7","CD71","CD8","CD81","CD86","CD94","CD95","CLEC12A","GPR56","IgM","KLRG1","TCR.AB","CD10", "CD117","CD9")]
+
+
+```
+
+
+CAH with Fastcluster
+```{r cars}
+
+distances <- dist(VAR_Bimodal, method = "euclidean")
+# Vérifier s'il y a des NA
+any(is.na(distances))
+
+# Installer flashClust si nécessaire
+install.packages("fastcluster")
+
+# Charger flashClust
+library(fastcluster)
+
+# Utiliser fastcluster::hclust() qui est un remplacement direct pour stats::hclust()
+hc <- fastcluster::hclust(distances, method = "complete")
+
+# Puis, tracer le dendrogramme
+plot(hc)
+
+```
